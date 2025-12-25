@@ -5,8 +5,9 @@ Similar to Spring Boot's main application class.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routes import sentiment_routes
+from app.routes import sentiment_routes, social_comment_analysis_routes
 from app.services.sentiment_service import SentimentService
+from app.services.insight_llm_service import InsightLLMService
 import logging
 
 # Configure logging
@@ -37,6 +38,7 @@ app.add_middleware(
 
 # Include routers (similar to @RestController registration)
 app.include_router(sentiment_routes.router)
+app.include_router(social_comment_analysis_routes.router)
 
 
 @app.on_event("startup")
@@ -59,7 +61,12 @@ async def startup_event():
         # Step 2: Initialize SentimentService to load ML models
         logger.info("Loading sentiment analysis models...")
         _ = SentimentService()
-        logger.info("All sentiment analysis models loaded successfully")
+        logger.info("Sentiment models ready")
+
+        # Step 3: Warm InsightLLMService pipelines so endpoints don't block later
+        logger.info("Preloading insight LLM pipelines...")
+        _ = InsightLLMService()
+        logger.info("Insight LLM pipelines ready")
         
         logger.info("Application startup completed successfully")
         
