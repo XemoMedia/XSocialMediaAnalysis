@@ -3,7 +3,7 @@ Repository abstraction for the media_analysis_analytics table.
 """
 from datetime import datetime, timezone
 import json
-from typing import Optional
+from typing import Iterable, Optional
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
@@ -17,6 +17,20 @@ class MediaAnalysisAnalyticRepository:
         self.db = db
 
     def upsert_from_insight(self, insight: SocialCommentInsight) -> MediaAnalysisAnalytic:
+        entity = self._upsert_without_commit(insight)
+        self.db.commit()
+        self.db.refresh(entity)
+        return entity
+
+    def bulk_upsert_from_insights(self, insights: Iterable[SocialCommentInsight]) -> None:
+        last_entity: Optional[MediaAnalysisAnalytic] = None
+        for insight in insights:
+            last_entity = self._upsert_without_commit(insight)
+        self.db.commit()
+        if last_entity is not None:
+            self.db.refresh(last_entity)
+
+    def _upsert_without_commit(self, insight: SocialCommentInsight) -> MediaAnalysisAnalytic:
         entity: Optional[MediaAnalysisAnalytic] = (
             self.db.query(MediaAnalysisAnalytic)
             .filter(MediaAnalysisAnalytic.social_comment_analysis_id == insight.id)
@@ -67,7 +81,5 @@ class MediaAnalysisAnalyticRepository:
             )
             self.db.add(entity)
 
-        self.db.commit()
-        self.db.refresh(entity)
         return entity
 
